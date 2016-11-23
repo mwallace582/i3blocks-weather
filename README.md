@@ -8,6 +8,10 @@ the [Dark Sky Developer](https://darksky.net/dev/) site. API requests are
 limited to 1000 per day per key, so running the command every 100 seconds will
 keep you under that limit presuming it will be running 24/7.
 
+Location data is provided by [IP-API.com](http://ip-api.com/). They
+automatically ban any IP address that exceeds 150 requests per minute. You've
+been warned.
+
 This utility depends on the [Weather Icons](http://erikflowers.github.io/weather-icons/)
 font package and [python-forecastio](https://github.com/ZeevG/python-forecast.io).
 

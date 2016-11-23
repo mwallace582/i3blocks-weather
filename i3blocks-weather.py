@@ -30,11 +30,11 @@ def get_lat_lon():
     import requests
     import json
 
-    send_url = 'http://freegeoip.net/json'
+    send_url = 'http://ip-api.com/json'
     r = requests.get(send_url)
     j = json.loads(r.text)
-    lat = j['latitude']
-    lon = j['longitude']
+    lat = j['lat']
+    lon = j['lon']
     return (lat, lon)
 
 def get_forecast(options, lat, lon):
@@ -103,6 +103,4 @@ def get_hex_codes(options, icon_str):
 
 (degrees_hex, icon_hex) = get_hex_codes(options, icon_str)
 
-line =  "<span font='Weather Icons'>&#x{0};</span> <span>{1}</span>".format(icon_hex, temp)
-line += "<span font='Weather Icons'>&#x{0};</span>".format(degrees_hex)
-print(line)
+print("<span font='Weather Icons'>&#x{0}; {1}&#x{2};</span>".format(icon_hex, temp, degrees_hex))
