@@ -4,6 +4,7 @@
 
 import os
 import forecastio
+from geopy.geocoders import Nominatim
 
 def get_options():
     from optparse import OptionParser
@@ -16,6 +17,8 @@ def get_options():
                       help='Report degrees in Celsius')
     parser.add_option('-k', '--api-key', dest='api_key',
                       action='store', help='Dark Sky API key')
+    parser.add_option('-a', '--address', dest='address',
+                      action='store', help='Your address')
 
     (options, args) = parser.parse_args()
 
@@ -27,7 +30,7 @@ def get_options():
 
     return options
 
-def get_lat_lon():
+def get_ip_location():
     import requests
     import json
 
@@ -36,7 +39,13 @@ def get_lat_lon():
     j = json.loads(r.text)
     lat = j['lat']
     lon = j['lon']
-    return (lat, lon)
+    location = "{}, {}".format(j['city'], j['region'])
+    return (lat, lon, location)
+
+def get_addr_location(address):
+    geolocator = Nominatim()
+    location = geolocator.geocode(address)
+    return (location.latitude, location.longitude, address)
 
 def convert_temp(options, temp):
     #Default is Farenheit
@@ -65,15 +74,19 @@ def get_hourly_forecast(options, forecast):
     hourly = forecast.hourly()
     return hourly.summary
 
-def notify_forecast(daily_summary, hourly_summary):
+def notify_forecast(location, daily_summary, hourly_summary):
     import subprocess
+    title = u"Weather - {}".format(location)
     message = u"Hourly Summary:\n{0}\n\n".format(hourly_summary)
     message += u"Daily Summary:\n{0}".format(daily_summary)
-    subprocess.Popen(['notify-send', 'Weather', message])
+    subprocess.Popen(['notify-send', title, message])
 
 options = get_options()
 
-(lat, lon) = get_lat_lon()
+if options.address:
+    (lat, lon, location) = get_addr_location(options.address)
+else:
+    (lat, lon, location) = get_ip_location()
 
 forecast = forecastio.load_forecast(options.api_key, lat, lon)
 (temp, icon_str) = get_current_forecast(options, forecast)
@@ -125,6 +138,6 @@ buttonPressed = os.environ.get('BLOCK_BUTTON', None)
 if buttonPressed:
     daily_summary = get_daily_forecast(options, forecast)
     hourly_summary = get_hourly_forecast(options, forecast)
-    notify_forecast(daily_summary, hourly_summary)
+    notify_forecast(location, daily_summary, hourly_summary)
 
 print("<span font='Weather Icons'>&#x{0}; {1}&#x{2};</span>".format(icon_hex, temp, degrees_hex))
