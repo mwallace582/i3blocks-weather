@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-# All Hex Codes from https://erikflowers.github.io/weather-icons/
-
 import os
 import forecastio
-from geopy.geocoders import Nominatim
 
 def get_options():
     from optparse import OptionParser
@@ -22,7 +19,7 @@ def get_options():
 
     (options, args) = parser.parse_args()
 
-    #Check options
+    # Validate options
     if not options.api_key:
         raise RuntimeError('A Dark Sky API key is required. Go to darksky.net/dev')
     if options.farenheit and options.celsius:
@@ -31,6 +28,8 @@ def get_options():
     return options
 
 def get_ip_location():
+    '''Get location as determined by IP address'''
+
     import requests
     import json
 
@@ -43,12 +42,17 @@ def get_ip_location():
     return (lat, lon, location)
 
 def get_addr_location(address):
+    '''Get location from input string'''
+
+    from geopy.geocoders import Nominatim
     geolocator = Nominatim()
     location = geolocator.geocode(address)
     return (location.latitude, location.longitude, address)
 
 def convert_temp(options, temp):
-    #Default is Farenheit
+    '''Convert temperature between units'''
+
+    # Dark Sky output is in Farenheit.
     if options.celsius:
         temp = round((temp - 32) * 5/9)
     elif options.farenheit:
@@ -58,50 +62,35 @@ def convert_temp(options, temp):
     return temp
 
 def get_current_forecast(options, forecast):
+    '''Get the forecast from the Dark Sky API'''
+
     currently = forecast.currently()
-
     temp = convert_temp(options, currently.temperature)
-
     icon_str = currently.icon
-
     return (temp, icon_str)
 
-def get_daily_forecast(options, forecast):
-    daily = forecast.daily()
-    return daily.summary
-
-def get_hourly_forecast(options, forecast):
-    hourly = forecast.hourly()
-    return hourly.summary
-
 def notify_forecast(location, daily_summary, hourly_summary):
+    '''Send notification with detailed forecast'''
+
     import subprocess
     title = u"Weather - {}".format(location)
     message = u"Hourly Summary:\n{0}\n\n".format(hourly_summary)
     message += u"Daily Summary:\n{0}".format(daily_summary)
     subprocess.Popen(['notify-send', title, message])
 
-options = get_options()
-
-if options.address:
-    (lat, lon, location) = get_addr_location(options.address)
-else:
-    (lat, lon, location) = get_ip_location()
-
-forecast = forecastio.load_forecast(options.api_key, lat, lon)
-(temp, icon_str) = get_current_forecast(options, forecast)
-
-FARENHEIT_HEX = 'f045'
-CELSIUS_HEX   = 'f03c'
-
 def get_icon_hex(options, icon_str):
+    ''' Returns the appropriate icons for current weather and unit indication
+       All Hex Codes from https://erikflowers.github.io/weather-icons/'''
+
+    # Hex codes for the "degrees F" or "degrees C" icons.
     if options.farenheit:
-        degrees_hex = FARENHEIT_HEX
+        degrees_hex = 'f045'
     elif options.celsius:
-        degrees_hex = CELSIUS_HEX
+        degrees_hex = 'f03c'
     else:
         raise RuntimeError('A degree unit must be specified')
 
+    # Hex codes for the icon which indicates the current weather.
     if icon_str == 'clear-day':
         icon_hex='f00d'
     elif icon_str == 'clear-night':
@@ -132,12 +121,33 @@ def get_icon_hex(options, icon_str):
         icon_hex = 'f07b' # N/A
     return (degrees_hex, icon_hex)
 
-(degrees_hex, icon_hex) = get_icon_hex(options, icon_str)
+def main ():
+    # Parse command line arguments
+    options = get_options()
 
-buttonPressed = os.environ.get('BLOCK_BUTTON', None)
-if buttonPressed:
-    daily_summary = get_daily_forecast(options, forecast)
-    hourly_summary = get_hourly_forecast(options, forecast)
-    notify_forecast(location, daily_summary, hourly_summary)
+    # Get user's location either from IP address or command line arguments
+    if options.address:
+        (lat, lon, location) = get_addr_location(options.address)
+    else:
+        (lat, lon, location) = get_ip_location()
 
-print("<span font='Weather Icons'>&#x{0}; {1}&#x{2};</span>".format(icon_hex, temp, degrees_hex))
+    # Load the forecast from Dark Sky (aka forecastio)
+    forecast = forecastio.load_forecast(options.api_key, lat, lon)
+    (temp, icon_str) = get_current_forecast(options, forecast)
+
+    # If the weather icon is pressed, this environment variable will be set.
+    buttonPressed = os.environ.get('BLOCK_BUTTON', None)
+    
+    # Send a notification with a more detailed forecast
+    if buttonPressed:
+        notify_forecast(location, forecast.daily().summary, forecast.hourly().summary)
+
+    # Translate icon & unit information into hex codes
+    (degrees_hex, icon_hex) = get_icon_hex(options, icon_str)
+
+    # i3blocks uses pango to render the following output into the desired icons
+    print("<span font='Weather Icons'>&#x{0}; {1}&#x{2};</span>".format(icon_hex, temp, degrees_hex))
+
+if __name__ == "__main__":
+    main()
+    
