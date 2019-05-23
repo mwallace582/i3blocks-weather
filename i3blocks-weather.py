@@ -45,7 +45,7 @@ def get_addr_location(address):
     '''Get location from input string'''
 
     from geopy.geocoders import Nominatim
-    geolocator = Nominatim()
+    geolocator = Nominatim(user_agent='i3blocks-weather')
     location = geolocator.geocode(address)
     return (location.latitude, location.longitude, address)
 
@@ -132,7 +132,7 @@ def main ():
         (lat, lon, location) = get_ip_location()
 
     # Load the forecast from Dark Sky (aka forecastio)
-    forecast = forecastio.load_forecast(options.api_key, lat, lon)
+    forecast = forecastio.load_forecast(options.api_key, lat, lon, units='us')
     (temp, icon_str) = get_current_forecast(options, forecast)
 
     # If the weather icon is pressed, this environment variable will be set.
