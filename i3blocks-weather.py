@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 import os
@@ -45,7 +46,7 @@ def get_addr_location(address):
     '''Get location from input string'''
 
     from geopy.geocoders import Nominatim
-    geolocator = Nominatim()
+    geolocator = Nominatim(user_agent="i3blocks-weather")
     location = geolocator.geocode(address)
     return (location.latitude, location.longitude, address)
 
