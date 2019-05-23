@@ -54,9 +54,9 @@ def convert_temp(options, temp):
 
     # Dark Sky output is in Farenheit.
     if options.celsius:
-        temp = round((temp - 32) * 5/9)
-    elif options.farenheit:
         temp = round(temp)
+    elif options.farenheit:
+        temp = round(temp*1.8+32)
     else:
         raise RuntimeError('A degree unit must be specified')
     return temp
