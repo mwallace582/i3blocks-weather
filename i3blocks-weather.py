@@ -18,6 +18,8 @@ def get_options():
                       action='store', help='Dark Sky API key')
     parser.add_option('-a', '--address', dest='address',
                       action='store', help='Your address')
+    parser.add_option('-r', '--round', dest='round',
+                      action='store', help='Number of digits in temperature after point, default is 0')
 
     (options, args) = parser.parse_args()
 
@@ -63,7 +65,7 @@ def get_addr_location(address):
     location = geolocator.geocode(address)
     return (location.latitude, location.longitude, address)
 
-#def convert_temp(options, temp):
+def round_temp(options, temp):
 #    '''Convert temperature between units'''
 #
 #    # Dark Sky output is in Farenheit.
@@ -73,13 +75,19 @@ def get_addr_location(address):
 #        temp = round(temp)
 #    else:
 #        raise RuntimeError('A degree unit must be specified')
-#    return temp
+    if not options.round:
+        temp = round(temp)
+    else:
+        p = int(options.round)
+        temp = round(temp, p)
+    return temp
 
 def get_current_forecast(options, forecast):
     '''Get the forecast from the Dark Sky API'''
 
     currently = forecast.currently()
-    return (round(currently.temperature), currently.icon)
+    temp = round_temp(options, currently.temperature)
+    return (temp, currently.icon)
 
 def notify_forecast(location, daily_summary, hourly_summary):
     '''Send notification with detailed forecast'''
