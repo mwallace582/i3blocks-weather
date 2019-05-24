@@ -61,23 +61,6 @@ def convert_temp(options, temp):
         raise RuntimeError('A degree unit must be specified')
     return temp
 
-def replace_temp_in_string(options, text):
-    if options.celsius:
-        words = text.split(' ')
-        for i in range(len(words)):
-            word = words[i]
-            if word.endswith('°F'):
-                t = int(word[:-2])
-            elif word.endswith('°F.'):
-                t = int(word[:-3])
-            else:
-                continue
-            ct = convert_temp(options, t)
-            tempstr = str(ct) + '°C' + ('.' if word.endswith('.') else '')
-            words[i] = tempstr
-        text = ' '.join(words)
-    return text
-
 def get_current_forecast(options, forecast):
     '''Get the forecast from the Dark Sky API'''
 
@@ -85,13 +68,6 @@ def get_current_forecast(options, forecast):
     temp = convert_temp(options, currently.temperature)
     icon_str = currently.icon
     return (temp, icon_str)
-
-def get_detailed_forecast(options, forecast):
-    h = forecast.hourly().summary
-    d = forecast.daily().summary
-    h = replace_temp_in_string(options, h)
-    d = replace_temp_in_string(options, d)
-    return d, h
 
 def notify_forecast(location, daily_summary, hourly_summary):
     '''Send notification with detailed forecast'''
@@ -164,7 +140,7 @@ def main ():
     
     # Send a notification with a more detailed forecast
     if buttonPressed:
-        notify_forecast(location, *get_detailed_forecast(options, forecast))
+        notify_forecast(location, forecast.daily().summary, forecast.hourly().summary)
 
     # Translate icon & unit information into hex codes
     (degrees_hex, icon_hex) = get_icon_hex(options, icon_str)
