@@ -12,35 +12,24 @@ def get_options():
     parser.add_option('-c', '--celsius', dest='celsius',
                       action='store_true', default=False,
                       help='Report degrees in Celsius')
-    parser.add_option('-u', '--units', dest='units',
-                      action='store', help='Unit system you prefer. Could be "us", "ca", "uk", "si"')
     parser.add_option('-k', '--api-key', dest='api_key',
                       action='store', help='Dark Sky API key')
     parser.add_option('-a', '--address', dest='address',
                       action='store', help='Your address')
-    parser.add_option('-r', '--round', dest='round',
-                      action='store', help='Number of digits in temperature after point, default is 0')
+    parser.add_option('-r', '--precision', dest='precision',
+                      action='store', type="int", default=0,
+                      help='Decimal places in temperature')
 
     (options, args) = parser.parse_args()
 
     # Validate options
     if not options.api_key:
         raise RuntimeError('A Dark Sky API key is required. Go to darksky.net/dev')
-    #if options.farenheit and options.celsius:
-    #    raise RuntimeError('Only one degree unit may be specified')
-    
-    # Set units properly
-    if options.units == 'us':
-        options.farenheit = True
-    elif options.units in ['ca', 'uk', 'si']:
-        options.celsius = True
-    elif options.farenheit:
-        options.units = 'us'
-    elif options.celsius:
-        options.units = 'si'
-    else:
-        raise RuntimeError('No valid unit system was specified')
-    
+    if options.farenheit and options.celsius:
+        raise RuntimeError('Only one degree unit may be specified')
+    if not options.farenheit and not options.celsius:
+        raise RuntimeError('A degree unit may be specified')
+
     return options
 
 def get_ip_location():
@@ -65,29 +54,25 @@ def get_addr_location(address):
     location = geolocator.geocode(address)
     return (location.latitude, location.longitude, address)
 
-def round_temp(options, temp):
-#    '''Convert temperature between units'''
-#
-#    # Dark Sky output is in Farenheit.
-#    if options.celsius:
-#        temp = round((temp - 32) * 5/9)
-#    elif options.farenheit:
-#        temp = round(temp)
-#    else:
-#        raise RuntimeError('A degree unit must be specified')
-    if not options.round:
-        temp = round(temp)
+def convert_temp(options, temp):
+    '''Convert temperature between units'''
+
+    # Dark Sky output is in Farenheit.
+    if options.celsius:
+        temp = round((temp - 32) * 5/9, options.precision)
+    elif options.farenheit:
+        temp = round(temp, options.precision)
     else:
-        p = int(options.round)
-        temp = round(temp, p)
+        raise RuntimeError('A degree unit must be specified')
     return temp
 
 def get_current_forecast(options, forecast):
     '''Get the forecast from the Dark Sky API'''
 
     currently = forecast.currently()
-    temp = round_temp(options, currently.temperature)
-    return (temp, currently.icon)
+    temp = convert_temp(options, currently.temperature)
+    icon_str = currently.icon
+    return (temp, icon_str)
 
 def notify_forecast(location, daily_summary, hourly_summary):
     '''Send notification with detailed forecast'''
@@ -152,7 +137,7 @@ def main ():
         (lat, lon, location) = get_ip_location()
 
     # Load the forecast from Dark Sky (aka forecastio)
-    forecast = forecastio.load_forecast(options.api_key, lat, lon, units=options.units)
+    forecast = forecastio.load_forecast(options.api_key, lat, lon, units='us')
     (temp, icon_str) = get_current_forecast(options, forecast)
 
     # If the weather icon is pressed, this environment variable will be set.
@@ -166,7 +151,8 @@ def main ():
     (degrees_hex, icon_hex) = get_icon_hex(options, icon_str)
 
     # i3blocks uses pango to render the following output into the desired icons
-    print("<span font='Weather Icons'>&#x{0}; {1}&#x{2};</span>".format(icon_hex, temp, degrees_hex))
+    print("<span font='Weather Icons'>&#x{0}; {1:.{2}f}&#x{3};</span>".format(
+        icon_hex, temp, options.precision, degrees_hex))
 
 if __name__ == "__main__":
     main()
